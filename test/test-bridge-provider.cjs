@@ -50,7 +50,7 @@ async function main() {
   assert.equal(providers.has('local'), true)
   assert.equal(providers.has('livingmemory'), true)
 
-  const entry = await active.record({ role: 'user', text: '你好', sessionId: 's1', presetId: 'foxy3（Character）' })
+  const entry = await active.record({ role: 'user', text: '你好', sessionId: 's1', presetId: 'foxy3' })
   assert.equal(entry.id, 'bridge-1')
   assert.equal(calls[0][0], '/record')
   assert.equal(calls[0][1].text, '你好')
