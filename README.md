@@ -60,6 +60,13 @@
 | `bridgeToken` | 空 | 与桥的 `token` 一致；公网部署必须设置 |
 | `bridgePresetId` | `foxy3（Character）` | 写入 LivingMemory 的 preset |
 | `bridgeTimeoutMs` | `15000` | 桥请求超时 |
+| `batchSize` | `8` | 累积多少条消息后调用 `/ingest` |
+| `flushIntervalMs` | `30000` | 未满一批时的定时冲刷间隔 |
+| `extractModel` | `deepseek/deepseek-flash` | 桥提取记忆使用的模型 |
+
+DSH 侧不再逐条写记忆：`record` 只把消息放进 pending，满 `batchSize` 或到 `flushIntervalMs` 时调用桥的 `/ingest`，由模型提炼成中文第一人称记忆。`stats()` 会显示 `pending`。
+
+Foxy 面板的「记忆桥设置」可以修改这些值，保存到 `$DSH_HOME/foxy/settings.json`；插件启动时读取，保存后尝试热重载。`/api/dsh-foxy/settings` 在 DSH host 内提供。
 
 ## 服务
 
