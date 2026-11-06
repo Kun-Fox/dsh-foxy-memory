@@ -55,6 +55,11 @@
 | `maxContextChars` | `6000` | 注入内容总字符上限 |
 | `userLabel` | `kunfox` | 用户显示名 |
 | `assistantLabel` | `Foxy` | 助手显示名 |
+| `provider` | `livingmemory`（配置 bridgeUrl 时）/ `local` | 记忆写到哪个 provider |
+| `bridgeUrl` | 空 | Koishi 桥地址，如 `http://127.0.0.1:5140/foxy-memory` |
+| `bridgeToken` | 空 | 与桥的 `token` 一致；公网部署必须设置 |
+| `bridgePresetId` | `foxy3（Character）` | 写入 LivingMemory 的 preset |
+| `bridgeTimeoutMs` | `15000` | 桥请求超时 |
 
 ## 服务
 
@@ -69,19 +74,29 @@ ctx.foxyMemory.archive(id)
 ctx.foxyMemory.stats()
 ```
 
-同时通过 `ctx.foxy.registerMemoryProvider('local', ...)` 注册到 Foxy 的 provider 注册表。
+同时通过 `ctx.foxy.registerMemoryProvider('local', ...)` 和（配置了桥时）`registerMemoryProvider('livingmemory', ...)` 注册到 Foxy 的 provider 注册表。
 
 ## 与 LivingMemory 的关系
 
-这是本地实现，不是 `chatluna-livingmemory` 的替代品，也不直接写它的 `koishi.db`/PGlite 索引。
+本地 JSONL 是默认实现，不是 `chatluna-livingmemory` 的替代品，也不直接写它的 `koishi.db`/PGlite 索引。
 
-未来如果要把 DSH 记忆写回 QQ 侧的 `foxy3（Character）` 池，建议单独做一个 Koishi 侧 HTTP/WS 桥，在桥内调用：
+如果要把 DSH 记忆写回 QQ 侧的 `foxy3（Character）` 池，安装并配置 [`koishi-plugin-foxy-memory-bridge`](../koishi-plugin-foxy-memory-bridge)：
+
+```yaml
+# DSH 侧 dsh-foxy-memory 配置
+provider: livingmemory
+bridgeUrl: http://127.0.0.1:5140/foxy-memory
+bridgeToken: 与桥一致的随机串
+bridgePresetId: foxy3（Character）
+```
+
+DSH 侧只向桥发送 `record`/`context` 请求；桥内调用：
 
 ```js
 ctx.chatluna_living_memory.createMemory(scope, input, speakerKeys)
 ```
 
-DSH 侧只向桥发送 `record`/`context` 请求。不要直接 INSERT SQLite，否则会绕过 speaker key、profile 和向量索引。
+不要直接 INSERT SQLite，否则会绕过 speaker key、profile 和向量索引。桥不可用时会自动回退本地 JSONL，不会丢消息。
 
 ## 安装
 
@@ -89,7 +104,7 @@ DSH 侧只向桥发送 `record`/`context` 请求。不要直接 INSERT SQLite，
 dsh plugin --profile desktop add "file:D:\path\to\dsh-foxy-memory"
 ```
 
-需要同时安装 `dsh-foxy`；重启 DSH 后，Foxy 会话会自动使用 `local` provider。
+需要同时安装 `dsh-foxy`；重启 DSH 后，Foxy 会话会使用当前 provider。默认是本地 JSONL；配置 `bridgeUrl` 后默认切到 LivingMemory 桥（也可显式 `provider: local` 保持本地）。
 
 ## License
 
