@@ -1,9 +1,13 @@
 'use strict'
 
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
 const { createServer } = require('node:http')
 
 async function main() {
+  process.env.DSH_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-foxy-memory-test-'))
   const calls = []
   const server = createServer((req, res) => {
     let body = ''

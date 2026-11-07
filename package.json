@@ -1,6 +1,6 @@
 {
   "name": "dsh-foxy-memory",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "description": "Memory subplugin for dsh-foxy: local JSONL archive plus optional ChatLuna LivingMemory bridge, recall and search.",
   "type": "module",
   "main": "lib/index.js",
@@ -35,6 +35,7 @@
   ],
   "license": "MIT"
 }
+
 
 
 
