@@ -7,7 +7,7 @@
 ## 依赖关系
 
 - 必需：`dsh-foxy`（提供 `foxyMemory` 扩展契约）。
-- 可选：`koishi-plugin-chatluna-foxy-memory`（QQ 侧/跨平台记忆中枢）。在 provider 设置为 `livingmemory` 并把 `bridgeUrl` 指向其 `/foxy-memory` 时启用；旧的 `koishi-plugin-foxy-memory-bridge` 不再需要。
+- 可选：`koishi-plugin-chatluna-foxy-memory`（QQ 侧/跨平台记忆中枢）。把 provider 设为 `livingmemory`，`bridgeUrl` 指向新插件的 `/foxy-memory`；它直接读写 Koishi 数据库与向量索引，不再需要旧 `koishi-plugin-foxy-memory-bridge` 进程。
 - 平台子插件 `dsh-foxy-bili` / `dsh-foxy-weibo` 会把事件写入本插件暴露的 `foxyMemory` provider。
 
 ## 记录格式
@@ -62,8 +62,8 @@
 | `userLabel` | `kunfox` | 用户显示名 |
 | `assistantLabel` | `Foxy` | 助手显示名 |
 | `provider` | `livingmemory`（配置 bridgeUrl 时）/ `local` | 记忆写到哪个 provider |
-| `bridgeUrl` | 空 | Koishi 桥地址，如 `http://127.0.0.1:5140/foxy-memory` |
-| `bridgeToken` | 空 | 与桥的 `token` 一致；公网部署必须设置 |
+| `bridgeUrl` | 空 | 新插件地址，如 `http://127.0.0.1:5140/foxy-memory` |
+| `bridgeToken` | 空 | 与新插件 `foxyApiToken` 一致；公网部署必须设置 |
 | `bridgePresetId` | `foxy3（Character）` | 写入 LivingMemory 的 preset |
 | `bridgeTimeoutMs` | `15000` | 桥请求超时 |
 | `batchSize` | `8` | 累积多少条消息后调用 `/ingest` |
@@ -89,27 +89,23 @@ ctx.foxyMemory.stats()
 
 同时通过 `ctx.foxy.registerMemoryProvider('local', ...)` 和（配置了桥时）`registerMemoryProvider('livingmemory', ...)` 注册到 Foxy 的 provider 注册表。
 
-## 与 LivingMemory 的关系
+## 与 Foxy Memory 的关系
 
-本地 JSONL 是默认实现，不是 `chatluna-livingmemory` 的替代品，也不直接写它的 `koishi.db`/PGlite 索引。
+本地 JSONL 是默认实现，适合只装 DSH、不接 QQ 的场景。它不会自动写入 Koishi 的 `koishi.db` 或 PGlite 向量索引。
 
-如果要把 DSH 记忆写回 QQ 侧的 `foxy3（Character）` 池，安装并配置 [`koishi-plugin-foxy-memory-bridge`](../koishi-plugin-foxy-memory-bridge)：
+如果需要 DSH 与 QQ 共用同一套跨平台记忆，安装并配置 [`koishi-plugin-chatluna-foxy-memory`](../koishi-plugin-chatluna-foxy-memory)：
 
 ```yaml
 # DSH 侧 dsh-foxy-memory 配置
 provider: livingmemory
 bridgeUrl: http://127.0.0.1:5140/foxy-memory
-bridgeToken: 与桥一致的随机串
+bridgeToken: 与新插件 foxyApiToken 一致的随机串
 bridgePresetId: foxy3（Character）
 ```
 
-DSH 侧只向桥发送 `record`/`context` 请求；桥内调用：
+新插件的 `/foxy-memory/record|ingest|context|list|search|health` 直接操作 Koishi 数据库、用户画像与向量索引。DSH 侧只发 HTTP 请求，不再启动旧 `koishi-plugin-foxy-memory-bridge`。
 
-```js
-ctx.chatluna_living_memory.createMemory(scope, input, speakerKeys)
-```
-
-不要直接 INSERT SQLite，否则会绕过 speaker key、profile 和向量索引。桥不可用时会自动回退本地 JSONL，不会丢消息。
+迁移时保留原 `living_memory_*` 表与 PGlite 目录；新插件就是同一套表结构的兼容 fork，不需要导出/导入 JSONL。切换前先备份 `koishi.db` 与向量目录，再开启 `foxyApiEnabled`。桥不可用时会自动回退本地 JSONL，不会丢消息。
 
 ## 安装
 
