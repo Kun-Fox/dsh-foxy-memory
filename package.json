@@ -1,9 +1,13 @@
 {
   "name": "dsh-foxy-memory",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Memory subplugin for dsh-foxy: local JSONL archive plus optional cross-platform Foxy Memory API, recall and search.",
   "type": "module",
   "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js"
+  },
   "files": [
     "lib",
     "cordis.patch.yml",
@@ -24,6 +28,12 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
     }
   },
   "keywords": [
@@ -35,6 +45,7 @@
   ],
   "license": "MIT"
 }
+
 
 
 

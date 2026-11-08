@@ -74,6 +74,27 @@ DSH 侧不再逐条写记忆：`record` 只把消息放进 pending，满 `batchS
 
 Foxy 面板的「记忆桥设置」可以修改这些值，保存到 `$DSH_HOME/foxy/settings.json`；插件启动时读取，保存后尝试热重载。`/api/dsh-foxy/settings` 在 DSH host 内提供。
 
+## 记忆浏览界面
+
+安装并重启 DSH 后，左侧栏出现 **Foxy Memory**。页面提供：
+
+- 记忆总数、待写入数、来源平台数和当前 provider；
+- 按平台（QQ / 微博 / B站 / DSH）、状态筛选；
+- 按内容、说话人、关键词搜索；
+- 单条归档，默认只显示活跃记忆。
+
+Host 路由：
+
+```text
+GET  /api/dsh-foxy-memory/stats
+GET  /api/dsh-foxy-memory/list?platform=weibo&status=active&pageSize=50
+GET  /api/dsh-foxy-memory/search?q=关键词
+POST /api/dsh-foxy-memory/archive   {"id":"..."}
+POST /api/dsh-foxy-memory/reload
+```
+
+`/list` 和 `/search` 在 `provider: "livingmemory"` 时走新记忆插件的 `/foxy-memory/list|search`，失败自动回退本地 JSONL。
+
 ## 服务
 
 加载后提供：
