@@ -23,11 +23,11 @@
 ```json
 {
   "id": "uuid",
-  "presetId": "foxy3",
+  "presetId": "preset",
   "sessionId": "session-id",
   "platform": "dsh",
   "sourceLabel": "DSH",
-  "speaker": "kunfox",
+  "speaker": "用户",
   "role": "user",
   "type": "conversation",
   "status": "active",
@@ -43,7 +43,7 @@
 注入时会格式化成：
 
 ```text
-- [2026-11-06 20:00] [DSH] kunfox: 今天在 DSH 做了……
+- [2026-11-06 20:00] [DSH] 用户: 今天在 DSH 做了……
 - [2026-11-06 20:00] [DSH] Foxy: 记住啦。
 ```
 
@@ -59,12 +59,12 @@
 | `maxContentChars` | `4000` | 单条内容截断 |
 | `maxContextEntries` | `20` | 最多注入条数 |
 | `maxContextChars` | `6000` | 注入内容总字符上限 |
-| `userLabel` | `kunfox` | 用户显示名 |
+| `userLabel` | `用户` | 用户显示名 |
 | `assistantLabel` | `Foxy` | 助手显示名 |
 | `provider` | `livingmemory`（配置 bridgeUrl 时）/ `local` | 记忆写到哪个 provider |
 | `bridgeUrl` | 空 | 新插件地址，如 `http://127.0.0.1:5140/foxy-memory` |
 | `bridgeToken` | 空 | 与新插件 `foxyApiToken` 一致；公网部署必须设置 |
-| `bridgePresetId` | `foxy3（Character）` | 写入 LivingMemory 的 preset |
+| `bridgePresetId` | `preset（Character）` | 写入 LivingMemory 的 preset |
 | `bridgeTimeoutMs` | `15000` | 桥请求超时 |
 | `batchSize` | `8` | 累积多少条消息后调用 `/ingest` |
 | `flushIntervalMs` | `30000` | 未满一批时的定时冲刷间隔 |
@@ -121,7 +121,7 @@ ctx.foxyMemory.stats()
 provider: livingmemory
 bridgeUrl: http://127.0.0.1:5140/foxy-memory
 bridgeToken: 与新插件 foxyApiToken 一致的随机串
-bridgePresetId: foxy3（Character）
+bridgePresetId: preset（Character）
 ```
 
 新插件的 `/foxy-memory/record|ingest|context|list|search|health` 直接操作 Koishi 数据库、用户画像与向量索引。DSH 侧只发 HTTP 请求，不再启动旧 `koishi-plugin-foxy-memory-bridge`。
