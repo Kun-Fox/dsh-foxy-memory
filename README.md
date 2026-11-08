@@ -2,7 +2,13 @@
 
 `dsh-foxy-memory` 是 [`dsh-foxy`](../dsh-foxy) 的可选记忆子插件。它把 Foxy 会话写成本地 JSONL，并在下一轮把最近记忆注入 Foxy 的 persona。
 
-它不依赖 ChatLuna/LivingMemory；这样任何人都可以只装 `dsh-foxy` + `dsh-foxy-memory` 就得到能记住对话的 Foxy。
+它本身不依赖 ChatLuna/LivingMemory；只装 `dsh-foxy` + `dsh-foxy-memory` 就能得到能记住对话的 Foxy。
+
+## 依赖关系
+
+- 必需：`dsh-foxy`（提供 `foxyMemory` 扩展契约）。
+- 可选：`koishi-plugin-chatluna-foxy-memory`（QQ 侧/跨平台记忆中枢）。在 provider 设置为 `livingmemory` 并把 `bridgeUrl` 指向其 `/foxy-memory` 时启用；旧的 `koishi-plugin-foxy-memory-bridge` 不再需要。
+- 平台子插件 `dsh-foxy-bili` / `dsh-foxy-weibo` 会把事件写入本插件暴露的 `foxyMemory` provider。
 
 ## 记录格式
 
