@@ -22,6 +22,10 @@ async function main() {
         res.end(JSON.stringify({ ok: true, created: (payload.messages || []).length }))
       } else if (pathname === '/context') {
         res.end(JSON.stringify({ ok: true, text: '- [2026-11-06 20:00] [DSH] kunfox 在 DSH 说：桥接成功' }))
+      } else if (pathname === '/list') {
+        res.end(JSON.stringify({ ok: true, items: [{ id: 'remote-1', content: '远程记忆' }], total: 1 }))
+      } else if (pathname === '/search') {
+        res.end(JSON.stringify({ ok: true, memories: [{ id: 'remote-2', content: '搜索结果' }] }))
       } else {
         res.statusCode = 404
         res.end(JSON.stringify({ ok: false, error: 'not found' }))
@@ -70,6 +74,15 @@ async function main() {
   assert.match(text, /桥接成功/)
   assert.equal(calls[1][0], '/context')
   assert.equal(calls[1][1].presetId, 'foxy3（Character）')
+
+  const listed = await active.list({ presetId: 'foxy3（Character）', platform: 'weibo' })
+  assert.equal(listed[0].id, 'remote-1')
+  assert.equal(calls[2][0], '/list')
+  assert.equal(calls[2][1].platform, 'weibo')
+
+  const searched = await active.search('微博', { presetId: 'foxy3（Character）' })
+  assert.equal(searched[0].id, 'remote-2')
+  assert.equal(calls[3][0], '/search')
 
   await new Promise((resolve) => server.close(resolve))
   await active.record({ role: 'user', text: '桥挂了也要记住', sessionId: 's2' })
