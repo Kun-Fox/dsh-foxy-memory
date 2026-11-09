@@ -62,13 +62,22 @@ async function main() {
   assert.equal(providers.has('local'), true)
   assert.equal(providers.has('livingmemory'), true)
 
-  await active.record({ role: 'user', text: '你好', sessionId: 's1', presetId: 'foxy3' })
+  await active.record({
+    role: 'user',
+    text: '你好',
+    sessionId: 's1',
+    presetId: 'foxy3',
+    speakerKey: 'weibo:6200420068',
+    speakerLabel: 'kunfox',
+  })
   assert.equal(calls.length, 0)
   await active.record({ role: 'assistant', text: '我在', sessionId: 's1', presetId: 'foxy3' })
   assert.equal(calls[0][0], '/ingest')
   assert.equal(calls[0][1].presetId, 'foxy3（Character）')
   assert.equal(calls[0][1].messages.length, 2)
   assert.equal(calls[0][1].messages[0].text, '你好')
+  assert.equal(calls[0][1].messages[0].speakerKey, 'weibo:6200420068')
+  assert.equal(calls[0][1].messages[0].speakerLabel, 'kunfox')
 
   const text = await active.context({ query: 'DSH', limit: 5, presetId: 'foxy3（Character）' })
   assert.match(text, /桥接成功/)
