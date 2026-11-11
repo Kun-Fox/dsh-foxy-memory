@@ -49,6 +49,16 @@
 
 `platform` 统一小写（`dsh`），显示时用 `sourceLabel`（如 `DSH`）；`presetId` 允许 Foxy 主预设和 Character 预设分开存档。
 
+## Koishi 预设链接
+
+Provider 为 `livingmemory` 时，设置页的「Koishi 记忆预设」会从 Koishi 的 `chatluna_foxy_memory` 读取预设列表（主预设 + `（Character）` + 数据库里已有的预设），选择后点“链接此预设”会：
+
+1. 把当前 DSH 侧未落盘的记忆 flush 到旧预设；
+2. 将 `bridgePresetId` 写入 `~/.dsh/foxy/settings.json`；
+3. 之后 DSH 的读写都落到新预设。
+
+这不会复制或删除任何记忆，只是切换 DSH 使用的预设池；想复制预设数据请用 Koishi 侧已有的导出/导入接口（`GET /foxy-memory/export`、`POST /foxy-memory/import`）。
+
 ## 配置
 
 | 字段 | 默认 | 说明 |

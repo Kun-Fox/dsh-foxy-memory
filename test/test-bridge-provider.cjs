@@ -26,6 +26,8 @@ async function main() {
         res.end(JSON.stringify({ ok: true, items: [{ id: 'remote-1', content: '远程记忆' }], total: 1 }))
       } else if (pathname === '/search') {
         res.end(JSON.stringify({ ok: true, memories: [{ id: 'remote-2', content: '搜索结果' }] }))
+      } else if (pathname === '/presets') {
+        res.end(JSON.stringify({ ok: true, presets: ['foxy3（Character）', 'foxy3'], defaultPreset: 'foxy3' }))
       } else {
         res.statusCode = 404
         res.end(JSON.stringify({ ok: false, error: 'not found' }))
@@ -36,9 +38,13 @@ async function main() {
   const { port } = server.address()
 
   const providers = new Map()
+  const routes = new Map()
   let active
   const ctx = {
     logger: { info() {}, warn() {}, debug() {} },
+    inject(ids, callback) {
+      callback({ connection: { fetch: { register(route) { routes.set(route.path, route.fetch) } } } })
+    },
     foxy: {
       registerMemoryProvider(name, factory) {
         providers.set(name, factory)
@@ -92,6 +98,26 @@ async function main() {
   const searched = await active.search('微博', { presetId: 'foxy3（Character）' })
   assert.equal(searched[0].id, 'remote-2')
   assert.equal(calls[3][0], '/search')
+
+  const presets = await active.listPresets()
+  assert.deepEqual(presets.presets, ['foxy3（Character）', 'foxy3'])
+  assert.equal(presets.currentPreset, 'foxy3（Character）')
+  const linked = await active.linkPreset('foxy3')
+  assert.deepEqual(linked, { ok: true, presetId: 'foxy3' })
+  const saved = JSON.parse(fs.readFileSync(path.join(process.env.DSH_HOME, 'foxy', 'settings.json'), 'utf8'))
+  assert.equal(saved.bridgePresetId, 'foxy3')
+
+  const presetRoute = await routes.get('/api/dsh-foxy-memory/presets')(new Request('http://x/api/dsh-foxy-memory/presets'))
+  const presetBody = await presetRoute.json()
+  assert.equal(presetBody.ok, true)
+  assert.equal(presetBody.currentPreset, 'foxy3')
+  const linkRoute = await routes.get('/api/dsh-foxy-memory/presets/link')(new Request('http://x/api/dsh-foxy-memory/presets/link', {
+    method: 'POST',
+    body: JSON.stringify({ presetId: 'foxy3（Character）' }),
+  }))
+  const linkBody = await linkRoute.json()
+  assert.equal(linkBody.ok, true)
+  assert.equal(linkBody.presetId, 'foxy3（Character）')
 
   await new Promise((resolve) => server.close(resolve))
   await active.record({ role: 'user', text: '桥挂了也要记住', sessionId: 's2' })
