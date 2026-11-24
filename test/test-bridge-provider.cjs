@@ -6,6 +6,18 @@ const os = require('node:os')
 const path = require('node:path')
 const { createServer } = require('node:http')
 
+function waitFor(predicate, timeoutMs = 2000) {
+  const startedAt = Date.now()
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      if (predicate()) return resolve()
+      if (Date.now() - startedAt > timeoutMs) return reject(new Error('waitFor timeout'))
+      setTimeout(tick, 10)
+    }
+    tick()
+  })
+}
+
 async function main() {
   process.env.DSH_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-foxy-memory-test-'))
   const calls = []
@@ -23,7 +35,12 @@ async function main() {
       } else if (pathname === '/context') {
         res.end(JSON.stringify({ ok: true, text: '- [2026-11-06 20:00] [DSH] kunfox 在 DSH 说：桥接成功' }))
       } else if (pathname === '/list') {
-        res.end(JSON.stringify({ ok: true, items: [{ id: 'remote-1', content: '远程记忆' }], total: 1 }))
+        res.end(JSON.stringify({
+          ok: true,
+          items: [{ id: 'remote-1', content: '远程记忆', platform: 'qq', updatedAt: '2026-11-24T12:00:00.000Z' }],
+          total: 143,
+          facets: { platforms: { qq: 100, weibo: 20, bilibili: 10, dsh: 13 } },
+        }))
       } else if (pathname === '/search') {
         res.end(JSON.stringify({ ok: true, memories: [{ id: 'remote-2', content: '搜索结果' }] }))
       } else if (pathname === '/presets') {
@@ -68,6 +85,13 @@ async function main() {
   assert.equal(providers.has('local'), true)
   assert.equal(providers.has('livingmemory'), true)
 
+  // 启动时自动同步一次 Koishi 记忆池，页面总数与来源平台来自桥。
+  await waitFor(() => active.stats().syncedAt > 0)
+  assert.equal(active.stats().total, 143)
+  assert.equal(active.stats().platforms.qq, 100)
+  assert.equal(active.stats().provider, 'livingmemory')
+
+  calls.length = 0
   await active.record({
     role: 'user',
     text: '你好',
@@ -78,26 +102,39 @@ async function main() {
   })
   assert.equal(calls.length, 0)
   await active.record({ role: 'assistant', text: '我在', sessionId: 's1', presetId: 'foxy3' })
-  assert.equal(calls[0][0], '/ingest')
-  assert.equal(calls[0][1].presetId, 'foxy3（Character）')
-  assert.equal(calls[0][1].messages.length, 2)
-  assert.equal(calls[0][1].messages[0].text, '你好')
-  assert.equal(calls[0][1].messages[0].speakerKey, 'weibo:6200420068')
-  assert.equal(calls[0][1].messages[0].speakerLabel, 'kunfox')
+  const ingest = calls.find(([pathname]) => pathname === '/ingest')
+  assert.ok(ingest, 'expect ingest call')
+  assert.equal(ingest[1].presetId, 'foxy3（Character）')
+  assert.equal(ingest[1].messages.length, 2)
+  assert.equal(ingest[1].messages[0].text, '你好')
+  assert.equal(ingest[1].messages[0].speakerKey, 'weibo:6200420068')
+  assert.equal(ingest[1].messages[0].speakerLabel, 'kunfox')
 
-  const text = await active.context({ query: 'DSH', limit: 5, presetId: 'foxy3（Character）' })
+  // 回忆必须落在已链接的 Koishi 预设池，而不是 DSH 的人格 presetId。
+  const text = await active.context({ query: 'DSH', limit: 5, presetId: 'foxy3' })
   assert.match(text, /桥接成功/)
-  assert.equal(calls[1][0], '/context')
-  assert.equal(calls[1][1].presetId, 'foxy3（Character）')
+  const contextCall = calls.findLast(([pathname]) => pathname === '/context')
+  assert.equal(contextCall[1].presetId, 'foxy3（Character）')
+  assert.equal(contextCall[1].query, 'DSH')
 
-  const listed = await active.list({ presetId: 'foxy3（Character）', platform: 'weibo' })
+  // 不带 query 的回忆取 Koishi 最新记忆，不再伪造 "DSH" 检索词。
+  const recent = await active.context({ limit: 5, presetId: 'foxy3' })
+  assert.match(recent, /远程记忆/)
+  assert.match(recent, /2026-11-24 12:00 QQ/)
+  const listCall = calls.findLast(([pathname]) => pathname === '/list')
+  assert.equal(listCall[1].presetId, 'foxy3（Character）')
+  assert.equal(listCall[1].status, 'active')
+
+  const listed = await active.list({ presetId: 'foxy3', platform: 'weibo' })
   assert.equal(listed[0].id, 'remote-1')
-  assert.equal(calls[2][0], '/list')
-  assert.equal(calls[2][1].platform, 'weibo')
+  const filteredList = calls.findLast(([pathname]) => pathname === '/list')
+  assert.equal(filteredList[1].platform, 'weibo')
+  assert.equal(filteredList[1].presetId, 'foxy3（Character）')
 
-  const searched = await active.search('微博', { presetId: 'foxy3（Character）' })
+  const searched = await active.search('微博', { presetId: 'foxy3' })
   assert.equal(searched[0].id, 'remote-2')
-  assert.equal(calls[3][0], '/search')
+  const searchCall = calls.findLast(([pathname]) => pathname === '/search')
+  assert.equal(searchCall[1].presetId, 'foxy3（Character）')
 
   const presets = await active.listPresets()
   assert.deepEqual(presets.presets, ['foxy3（Character）', 'foxy3'])
@@ -106,6 +143,21 @@ async function main() {
   assert.deepEqual(linked, { ok: true, presetId: 'foxy3' })
   const saved = JSON.parse(fs.readFileSync(path.join(process.env.DSH_HOME, 'foxy', 'settings.json'), 'utf8'))
   assert.equal(saved.bridgePresetId, 'foxy3')
+  await waitFor(() => calls.some(([pathname, payload]) => pathname === '/list' && payload.presetId === 'foxy3'))
+
+  // 记忆页路由返回 Koishi 的真实总数，而不是本地 JSONL 条数。
+  const listRoute = await routes.get('/api/dsh-foxy-memory/list')(new Request('http://x/api/dsh-foxy-memory/list?pageSize=100'))
+  const listBody = await listRoute.json()
+  assert.equal(listBody.ok, true)
+  assert.equal(listBody.items.length, 1)
+  assert.equal(listBody.total, 143)
+  assert.equal(listBody.stats.total, 143)
+  assert.ok(listBody.stats.syncedAt > 0)
+
+  const statsRoute = await routes.get('/api/dsh-foxy-memory/stats')(new Request('http://x/api/dsh-foxy-memory/stats'))
+  const statsBody = await statsRoute.json()
+  assert.equal(statsBody.stats.provider, 'livingmemory')
+  assert.equal(statsBody.stats.total, 143)
 
   const presetRoute = await routes.get('/api/dsh-foxy-memory/presets')(new Request('http://x/api/dsh-foxy-memory/presets'))
   const presetBody = await presetRoute.json()

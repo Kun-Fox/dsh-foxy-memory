@@ -74,13 +74,20 @@ Provider 为 `livingmemory` 时，设置页的「Koishi 记忆预设」会从 Ko
 | `provider` | `livingmemory`（配置 bridgeUrl 时）/ `local` | 记忆写到哪个 provider |
 | `bridgeUrl` | 空 | 新插件地址，如 `http://127.0.0.1:5140/foxy-memory` |
 | `bridgeToken` | 空 | 与新插件 `foxyApiToken` 一致；公网部署必须设置 |
-| `bridgePresetId` | `preset（Character）` | 写入 LivingMemory 的 preset |
+| `bridgePresetId` | `foxy3（Character）` | 读写共用的 Koishi 预设池 |
 | `bridgeTimeoutMs` | `15000` | 桥请求超时 |
 | `batchSize` | `8` | 累积多少条消息后调用 `/ingest` |
 | `flushIntervalMs` | `30000` | 未满一批时的定时冲刷间隔 |
+| `syncIntervalMs` | `60000` | 从桥拉取记忆池总数与平台分布的间隔，最小 5000 |
 | `extractModel` | `deepseek/deepseek-flash` | 桥提取记忆使用的模型 |
 
 DSH 侧不再逐条写记忆：`record` 只把消息放进 pending，满 `batchSize` 或到 `flushIntervalMs` 时调用桥的 `/ingest`，由模型提炼成中文第一人称记忆。`stats()` 会显示 `pending`。
+
+Provider 为 `livingmemory` 时，读取接口全部绑定 `bridgePresetId`：DSH 的人格 `presetId` 不会传到桥，链接哪个 Koishi 预设，回忆、列表与搜索就使用哪个记忆池。
+
+- 带 `query` 的回忆调用桥的 `/foxy-memory/context`，保留语义检索与用户画像；
+- 不带 `query` 的回忆（DSH 每轮会话开始时就是这种）直接取桥里最新的活跃记忆，避免用固定检索词碰运气；
+- 插件启动、定时器、记忆落盘和切换预设后都会拉取一次记忆池统计，`stats().total`、`platforms`、`syncedAt` 反映 Koishi 侧的真实数据，而不是本地 JSONL 条数。
 
 Foxy 面板的「记忆桥设置」可以修改这些值，保存到 `$DSH_HOME/foxy/settings.json`；插件启动时读取，保存后尝试热重载。`/api/dsh-foxy/settings` 在 DSH host 内提供。
 
@@ -91,7 +98,10 @@ Foxy 面板的「记忆桥设置」可以修改这些值，保存到 `$DSH_HOME/
 - 记忆总数、待写入数、来源平台数和当前 provider；
 - 按平台（QQ / 微博 / B站 / DSH）、状态筛选；
 - 按内容、说话人、关键词搜索；
-- 单条归档，默认只显示活跃记忆。
+- 单条归档，默认只显示活跃记忆；
+- 面板每 15 秒自动拉取一次（页面隐藏或正在输入搜索词时暂停），切回页面时立即刷新；标题旁显示最近同步时间。
+
+Bridge 模式下「记忆总数」与「来源平台」来自 Koishi `/foxy-memory/list` 的 `total` 与 `facets`；「全部状态」会映射成 Koishi 的 `status=all`。
 
 Host 路由：
 
@@ -103,7 +113,7 @@ POST /api/dsh-foxy-memory/archive   {"id":"..."}
 POST /api/dsh-foxy-memory/reload
 ```
 
-`/list` 和 `/search` 在 `provider: "livingmemory"` 时走新记忆插件的 `/foxy-memory/list|search`，失败自动回退本地 JSONL。
+`/list` 和 `/search` 在 `provider: "livingmemory"` 时走新记忆插件的 `/foxy-memory/list|search`，失败自动回退本地 JSONL；`/list` 的 `total` 是当前筛选条件下的 Koishi 条数。
 
 ## 服务
 
