@@ -1,6 +1,6 @@
 {
   "name": "dsh-foxy-memory",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "Memory subplugin for dsh-foxy: local JSONL archive plus optional cross-platform Foxy Memory API, recall and search.",
   "type": "module",
   "main": "lib/index.js",
@@ -45,3 +45,4 @@
   ],
   "license": "MIT"
 }
+
